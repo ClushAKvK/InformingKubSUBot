@@ -38,9 +38,11 @@ public class CallbackQueryHandler {
         if (userLoginStates.containsKey(chatId) && userLoginStates.get(chatId).equals(LoginStateEnum.INPUT_ROLE_STATE)) {
             users.get(chatId).setRole(data);
             if (data.equals(AccessRightEnum.STUDENT.name())) {
-                return getLoginStudentGroupMessage(chatId);
+                return getLoginStudentAuthorizationLoginMessage(chatId);
+//                return getLoginStudentGroupMessage(chatId);
             }
-            return getLoginEnterPasswordMessage(chatId);
+//            return getLoginEnterPasswordMessage(chatId);
+            return getLoginEnterFullNameMessage(chatId);
         }
         else if (data.equals(ButtonNameEnum.TO_ONLY_GROUP.name())) {
             return getSendChooseGroupMessage(chatId);
@@ -82,6 +84,14 @@ public class CallbackQueryHandler {
      * Обработка инлайн кнопок
      */
 
+    public SendMessage getLoginStudentAuthorizationLoginMessage(String chatId) {
+        userLoginStates.replace(chatId, LoginStateEnum.INPUT_STUDENT_LOGIN_STATE);
+
+        SendMessage sendMessage = new SendMessage(chatId, BotMessageEnum.LOGIN_INPUT_KUBSU_STUDENT_LOGIN_MESSAGE.getMessage());
+        sendMessage.enableMarkdown(true);
+        return sendMessage;
+    }
+
     public SendMessage getLoginStudentGroupMessage(String chatId) {
         userLoginStates.replace(chatId, LoginStateEnum.INPUT_STUDENT_GROUP_STATE);
 
@@ -90,6 +100,13 @@ public class CallbackQueryHandler {
         return sendMessage;
     }
 
+    public SendMessage getLoginEnterFullNameMessage(String chatId) {
+        userLoginStates.replace(chatId, LoginStateEnum.INPUT_FULLNAME_STATE);
+
+        SendMessage sendMessage = new SendMessage(chatId, BotMessageEnum.LOGIN_START_MESSAGE.getMessage());
+        sendMessage.enableMarkdown(true);
+        return sendMessage;
+    }
 
     public SendMessage getLoginEnterPasswordMessage(String chatId) {
         userLoginStates.replace(chatId, LoginStateEnum.INPUT_ENTER_PASSWORD_STATE);
