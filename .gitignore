@@ -30,10 +30,14 @@ build/
 !**/src/test/**/build/
 
 ### VS Code ###
+<<<<<<< HEAD
 .vscode/
 
 <<<<<<< HEAD
 .yaml
 =======
 src/main/resources/application.yaml
+>>>>>>> test_br
+=======
+.vscode/
 >>>>>>> test_br
