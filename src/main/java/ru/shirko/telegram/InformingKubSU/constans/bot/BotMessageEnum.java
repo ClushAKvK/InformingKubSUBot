@@ -25,6 +25,9 @@ public enum BotMessageEnum {
             "3ИТ - группа\n" +
             "0 - подгрупа"
     ),
+    LOGIN_INPUT_KUBSU_STUDENT_LOGIN_MESSAGE("Введите логин в информационной системе КубГУ"),
+    LOGIN_INPUT_KUBSU_STUDENT_PASS_MESSAGE("Введите пароль в информационной системе КубГУ"),
+    LOGIN_INPUT_STUDENT_UNDER_GROUP("Введите вашу подгруппу(0 - в случае её отсутствия)"),
     LOGIN_ENTER_PASSWORD_MESSAGE("Введите пароль для подтвреждения роли"),
     LOGIN_TRUTH_PASSWORD_MESSAGE("Успех\u2705 Теперь вы авторизированы и можете пользоваться доступным функционалом"),
     LOGIN_WRONG_PASSWORD_MESSAGE("Неверный пароль\u274C. Попробуйте ещё раз или пройдите авторизация под другой ролью /login"),

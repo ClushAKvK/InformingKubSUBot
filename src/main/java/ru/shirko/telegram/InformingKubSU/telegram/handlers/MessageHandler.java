@@ -20,9 +20,17 @@ import ru.shirko.telegram.InformingKubSU.telegram.keyboards.ReplyKeyboardMaker;
 import ru.shirko.telegram.InformingKubSU.telegram.user.UserSendMessage;
 import ru.shirko.telegram.InformingKubSU.telegram.user.UserUtils;
 
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
+
+import org.jsoup.Connection;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
 
 import static ru.shirko.telegram.InformingKubSU.InformingKubSuApplication.*;
 
@@ -37,6 +45,8 @@ public class MessageHandler {
     ReplyKeyboardMaker replyKeyboardMaker;
 
     List<String> updateUser = new ArrayList<>();
+
+    Map<String, String> studentKubsuLogin = new HashMap<>();
 
     public BotApiMethod<?> answerMessage(Message message) {
         String chatId = message.getChatId().toString();
@@ -83,7 +93,37 @@ public class MessageHandler {
         else if (userLoginStates.containsKey(chatId)) {
             if (userLoginStates.get(chatId).equals(LoginStateEnum.INPUT_FULLNAME_STATE)) {
                 users.get(chatId).setFullName(inputText.trim().toUpperCase());
-                return getLoginChooseRole(chatId);
+//                return getLoginChooseRole(chatId);
+                return getLoginEnterPasswordMessage(chatId);
+            }
+            else if (userLoginStates.get(chatId).equals(LoginStateEnum.INPUT_STUDENT_LOGIN_STATE)) {
+                studentKubsuLogin.put(chatId, inputText.trim());
+                return getLoginStudentAuthorizationPassMessage(chatId);
+            }
+            else if (userLoginStates.get(chatId).equals(LoginStateEnum.INPUT_STUDENT_PASSWORD_STATE)) {
+                String [] studentAuthData = new String[] { studentKubsuLogin.get(chatId), inputText.trim() };
+                studentKubsuLogin.remove(chatId);
+
+                try {
+                    List<String> studentKubSUData = loginKubSUStudent(studentAuthData);
+                    users.get(chatId).setFullName(studentKubSUData.get(0));
+                    users.get(chatId).setStudentGroup(studentKubSUData.get(1));
+                }
+                catch (IllegalArgumentException e) {
+                    userLoginStates.replace(chatId, LoginStateEnum.INPUT_STUDENT_LOGIN_STATE);
+                    return new SendMessage(chatId, e.getMessage() + "\n" + BotMessageEnum.LOGIN_INPUT_KUBSU_STUDENT_LOGIN_MESSAGE.getMessage());
+                }
+
+                return getLoginStudentUnderGroupMessage(chatId);
+            }
+            else if (userLoginStates.get(chatId).equals(LoginStateEnum.INPUT_STUDENT_UNDER_GROUP_STATE)) {
+                String course = users.get(chatId).getStudentCourse();
+                String group = users.get(chatId).getStudentGroup();
+                String under_group = inputText.trim();
+
+                users.get(chatId).setStudentGroup(course + "/" + group + "/" + under_group);
+
+                return getLoginTruthPasswordMessage(chatId);
             }
             else if (userLoginStates.get(chatId).equals(LoginStateEnum.INPUT_STUDENT_GROUP_STATE)) {
                 inputText = inputText.trim().replace(" ", "/");
@@ -159,11 +199,15 @@ public class MessageHandler {
 
     public SendMessage getLoginStartMessage(String chatId) {
         if (!userLoginStates.containsKey(chatId))
-            userLoginStates.put(chatId, LoginStateEnum.INPUT_FULLNAME_STATE);
+//            userLoginStates.put(chatId, LoginStateEnum.INPUT_FULLNAME_STATE);
+            userLoginStates.put(chatId, LoginStateEnum.INPUT_ROLE_STATE);
         else
-            userLoginStates.replace(chatId, LoginStateEnum.INPUT_FULLNAME_STATE);
+            userLoginStates.replace(chatId, LoginStateEnum.INPUT_ROLE_STATE);
+//            userLoginStates.replace(chatId, LoginStateEnum.INPUT_FULLNAME_STATE);
 
-        SendMessage sendMessage = new SendMessage(chatId, BotMessageEnum.LOGIN_START_MESSAGE.getMessage());
+        SendMessage sendMessage = new SendMessage(chatId, BotMessageEnum.LOGIN_CHOOSE_ROLE_MESSAGE.getMessage());
+//        SendMessage sendMessage = new SendMessage(chatId, BotMessageEnum.LOGIN_START_MESSAGE.getMessage());
+        sendMessage.setReplyMarkup(inlineKeyboardMaker.getChooseRoleButtons());
         sendMessage.enableMarkdown(true);
         return sendMessage;
     }
@@ -174,6 +218,23 @@ public class MessageHandler {
 
         SendMessage sendMessage = new SendMessage(chatId, BotMessageEnum.LOGIN_CHOOSE_ROLE_MESSAGE.getMessage());
         sendMessage.setReplyMarkup(inlineKeyboardMaker.getChooseRoleButtons());
+        return sendMessage;
+    }
+
+
+    public SendMessage getLoginStudentAuthorizationPassMessage(String chatId) {
+        userLoginStates.replace(chatId, LoginStateEnum.INPUT_STUDENT_PASSWORD_STATE);
+
+        SendMessage sendMessage = new SendMessage(chatId, BotMessageEnum.LOGIN_INPUT_KUBSU_STUDENT_PASS_MESSAGE.getMessage());
+        sendMessage.enableMarkdown(true);
+        return sendMessage;
+    }
+
+
+    public SendMessage getLoginStudentUnderGroupMessage(String chatId) {
+        userLoginStates.replace(chatId, LoginStateEnum.INPUT_STUDENT_UNDER_GROUP_STATE);
+
+        SendMessage sendMessage = new SendMessage(chatId, BotMessageEnum.LOGIN_INPUT_STUDENT_UNDER_GROUP.getMessage());
         return sendMessage;
     }
 
@@ -364,4 +425,48 @@ public class MessageHandler {
             return "Член деканата";
     }
 
+
+    private List<String> loginKubSUStudent(String [] data) {
+        org.jsoup.nodes.Document doc = null;
+        List<String> studentData = new ArrayList<>();
+        try {
+            Connection.Response response = Jsoup.connect("https://kubsu.ru/user/")
+                    .method(Connection.Method.GET)
+                    .execute();
+            response = Jsoup.connect("https://kubsu.ru/user/")
+                    .header("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 YaBrowser/23.1.4.778 Yowser/2.5 Safari/537.36")
+                    .data("name", data[0],
+                            "pass", data[1],
+                            "form_build_id", "form-6WaXgfgNZ-mR5iIyNjJ1cazdjmfi1aO9HjwkGxI3A0Y",
+                            "form_id", "user_login",
+                            "op", "Войти")
+                    .method(Connection.Method.POST)
+                    .timeout(10000).execute();
+
+
+            doc = Jsoup.connect("https://www.kubsu.ru/public-portfolio").cookies(response.cookies()).get();
+//            Element blockRega = doc.select("div.foot").first();
+            String [] fio = doc.select("head > title").text().split(Pattern.quote("|"));
+
+            if (fio[0].trim().equals("Гость")) throw new IllegalArgumentException("Неверный логин или пароль");
+
+            studentData.add(fio[0].trim());
+
+//            System.out.println(fio[0].trim());
+//            System.out.println(doc.select("head > meta"));
+//            System.out.println(doc.select("head > meta").get(2).attr("content"));
+            for (Element el : doc.select("head > meta")) {
+                if (el.attr("about").equals("/ru/taxonomy/term/2103")) {
+                    String group = el.attr("content");
+//                    System.out.println(el.attr("content"));
+                    studentData.add(group.charAt(0) + "/" + group + "/0");
+                }
+            }
+        } catch (IOException e) {
+
+            e.printStackTrace();
+        }
+
+        return studentData;
+    }
 }
