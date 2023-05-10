@@ -5,6 +5,8 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import ru.shirko.telegram.InformingKubSU.constans.bot.ButtonNameEnum;
 import ru.shirko.telegram.InformingKubSU.constans.user.AccessRightEnum;
+import ru.shirko.telegram.InformingKubSU.constans.user.LoginStateEnum;
+import ru.shirko.telegram.InformingKubSU.constans.user.SendCommandStateEnum;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -67,6 +69,21 @@ public class InlineKeyboardMaker {
         rowList.add(getButton("Студент", AccessRightEnum.STUDENT.name()));
         rowList.add(getButton("Преподаватель", AccessRightEnum.TEACHER.name()));
         rowList.add(getButton("Член деканата", AccessRightEnum.DEANERY_MEMBER.name()));
+
+        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+        inlineKeyboardMarkup.setKeyboard(rowList);
+        return inlineKeyboardMarkup;
+    }
+
+
+    public InlineKeyboardMarkup backToChooseRoleButtons() {
+        List<List<InlineKeyboardButton>> rowList = new ArrayList<>();
+//
+//        rowList.add(getButton("Студент", AccessRightEnum.STUDENT.name()));
+//        rowList.add(getButton("Преподаватель", AccessRightEnum.TEACHER.name()));
+//        rowList.add(getButton("Член деканата", AccessRightEnum.DEANERY_MEMBER.name()));
+        rowList.add(getButton("Назад", LoginStateEnum.INPUT_ROLE_STATE.name()));
+
 
         InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
         inlineKeyboardMarkup.setKeyboard(rowList);

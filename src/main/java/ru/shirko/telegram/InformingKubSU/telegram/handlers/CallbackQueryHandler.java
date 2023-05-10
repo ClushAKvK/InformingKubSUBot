@@ -38,12 +38,19 @@ public class CallbackQueryHandler {
         if (userLoginStates.containsKey(chatId) && userLoginStates.get(chatId).equals(LoginStateEnum.INPUT_ROLE_STATE)) {
             users.get(chatId).setRole(data);
             if (data.equals(AccessRightEnum.STUDENT.name())) {
-                return getLoginStudentAuthorizationLoginMessage(chatId);
+                return getLoginKubsuAuthorizationLoginMessage(chatId);
 //                return getLoginStudentGroupMessage(chatId);
+            }
+            else if (data.equals(AccessRightEnum.TEACHER.name())) {
+                return getLoginKubsuAuthorizationLoginMessage(chatId);
             }
 //            return getLoginEnterPasswordMessage(chatId);
             return getLoginEnterFullNameMessage(chatId);
         }
+//        else if (data.equals(LoginStateEnum.INPUT_ROLE_STATE.name())) {
+//            Integer messageId = buttonQuery.getMessage().getMessageId();
+//            return bachToChooseRoleMessage(chatId, messageId);
+//        }
         else if (data.equals(ButtonNameEnum.TO_ONLY_GROUP.name())) {
             return getSendChooseGroupMessage(chatId);
         }
@@ -84,13 +91,30 @@ public class CallbackQueryHandler {
      * Обработка инлайн кнопок
      */
 
-    public SendMessage getLoginStudentAuthorizationLoginMessage(String chatId) {
-        userLoginStates.replace(chatId, LoginStateEnum.INPUT_STUDENT_LOGIN_STATE);
+    public SendMessage getLoginKubsuAuthorizationLoginMessage(String chatId) {
+        userLoginStates.replace(chatId, LoginStateEnum.INPUT_KUBSU_LOGIN_STATE);
 
-        SendMessage sendMessage = new SendMessage(chatId, BotMessageEnum.LOGIN_INPUT_KUBSU_STUDENT_LOGIN_MESSAGE.getMessage());
+        SendMessage sendMessage = new SendMessage(chatId, BotMessageEnum.LOGIN_INPUT_KUBSU_LOGIN_MESSAGE.getMessage());
+        //sendMessage.setReplyMarkup(inlineKeyboardMaker.backToChooseRoleButtons());
         sendMessage.enableMarkdown(true);
         return sendMessage;
     }
+
+//    public EditMessageText bachToChooseRoleMessage(String chatId, Integer messageId) {
+//        userLoginStates.replace(chatId, LoginStateEnum.INPUT_ROLE_STATE);
+//
+//        EditMessageText editMessageText = new EditMessageText();
+//        editMessageText.setChatId(chatId);
+//        editMessageText.setMessageId(messageId);
+//
+//        editMessageText.setText(BotMessageEnum.LOGIN_CHOOSE_ROLE_MESSAGE.getMessage());
+//
+//        editMessageText.setReplyMarkup(inlineKeyboardMaker.getChooseRoleButtons());
+//
+//        editMessageText.enableMarkdown(true);
+//
+//        return editMessageText;
+//    }
 
     public SendMessage getLoginStudentGroupMessage(String chatId) {
         userLoginStates.replace(chatId, LoginStateEnum.INPUT_STUDENT_GROUP_STATE);

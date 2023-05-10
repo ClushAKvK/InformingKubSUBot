@@ -46,7 +46,7 @@ public class MessageHandler {
 
     List<String> updateUser = new ArrayList<>();
 
-    Map<String, String> studentKubsuLogin = new HashMap<>();
+    Map<String, String> kubsuLogin = new HashMap<>();
 
     public BotApiMethod<?> answerMessage(Message message) {
         String chatId = message.getChatId().toString();
@@ -96,13 +96,27 @@ public class MessageHandler {
 //                return getLoginChooseRole(chatId);
                 return getLoginEnterPasswordMessage(chatId);
             }
-            else if (userLoginStates.get(chatId).equals(LoginStateEnum.INPUT_STUDENT_LOGIN_STATE)) {
-                studentKubsuLogin.put(chatId, inputText.trim());
-                return getLoginStudentAuthorizationPassMessage(chatId);
+            else if (userLoginStates.get(chatId).equals(LoginStateEnum.INPUT_KUBSU_LOGIN_STATE)) {
+                kubsuLogin.put(chatId, inputText.trim());
+                if (users.get(chatId).getRole().equals(AccessRightEnum.STUDENT.name())) {
+                    return getLoginStudentAuthorizationPassMessage(chatId);
+                }
+                else if (users.get(chatId).getRole().equals(AccessRightEnum.TEACHER.name())) {
+//                    return getLoginStudentAuthorizationPassMessage(chatId);
+                    if (inputText.trim().charAt(0) == 's') {
+                        kubsuLogin.remove(chatId);
+                        return getWrongLoginTeacherAuthorizationPassMessage(chatId);
+                    }
+                    else if (inputText.trim().equals("admin")) {
+                        kubsuLogin.remove(chatId);
+                        return getLoginTruthPasswordMessage(chatId);
+                    }
+                    return getLoginTeacherAuthorizationPassMessage(chatId);
+                }
             }
-            else if (userLoginStates.get(chatId).equals(LoginStateEnum.INPUT_STUDENT_PASSWORD_STATE)) {
-                String [] studentAuthData = new String[] { studentKubsuLogin.get(chatId), inputText.trim() };
-                studentKubsuLogin.remove(chatId);
+            else if (userLoginStates.get(chatId).equals(LoginStateEnum.INPUT_KUBSU_STUDENT_PASSWORD_STATE)) {
+                String [] studentAuthData = new String[] { kubsuLogin.get(chatId), inputText.trim() };
+                kubsuLogin.remove(chatId);
 
                 try {
                     List<String> studentKubSUData = loginKubSUStudent(studentAuthData);
@@ -110,8 +124,8 @@ public class MessageHandler {
                     users.get(chatId).setStudentGroup(studentKubSUData.get(1));
                 }
                 catch (IllegalArgumentException e) {
-                    userLoginStates.replace(chatId, LoginStateEnum.INPUT_STUDENT_LOGIN_STATE);
-                    return new SendMessage(chatId, e.getMessage() + "\n" + BotMessageEnum.LOGIN_INPUT_KUBSU_STUDENT_LOGIN_MESSAGE.getMessage());
+                    userLoginStates.replace(chatId, LoginStateEnum.INPUT_KUBSU_LOGIN_STATE);
+                    return new SendMessage(chatId, e.getMessage() + "\n" + BotMessageEnum.LOGIN_INPUT_KUBSU_LOGIN_MESSAGE.getMessage());
                 }
 
                 return getLoginStudentUnderGroupMessage(chatId);
@@ -125,14 +139,31 @@ public class MessageHandler {
 
                 return getLoginTruthPasswordMessage(chatId);
             }
-            else if (userLoginStates.get(chatId).equals(LoginStateEnum.INPUT_STUDENT_GROUP_STATE)) {
-                inputText = inputText.trim().replace(" ", "/");
-                users.get(chatId).setStudentGroup(inputText);
-                if (!checkInputStudentGroup(inputText)) {
-                    return new SendMessage(chatId, "Неправильный формат ввода! Повторите попытку.");
+            else if (userLoginStates.get(chatId).equals(LoginStateEnum.INPUT_KUBSU_TEACHER_PASSWORD_STATE)) {
+                String [] teacherAuthData = new String[] { kubsuLogin.get(chatId), inputText.trim() };
+//                String teacherAuthData;
+                kubsuLogin.remove(chatId);
+
+                try {
+                    String teacherKubSUData = loginKubSUTeacher(teacherAuthData);
+                    users.get(chatId).setFullName(teacherKubSUData);
+//                    users.get(chatId).setStudentGroup(studentKubSUData.get(1));
                 }
-                return getLoginEnterPasswordMessage(chatId);
+                catch (IllegalArgumentException e) {
+                    userLoginStates.replace(chatId, LoginStateEnum.INPUT_KUBSU_LOGIN_STATE);
+                    return new SendMessage(chatId, e.getMessage() + "\n" + BotMessageEnum.LOGIN_INPUT_KUBSU_LOGIN_MESSAGE.getMessage());
+                }
+
+                return getLoginTruthPasswordMessage(chatId);
             }
+//            else if (userLoginStates.get(chatId).equals(LoginStateEnum.INPUT_STUDENT_GROUP_STATE)) {
+//                inputText = inputText.trim().replace(" ", "/");
+//                users.get(chatId).setStudentGroup(inputText);
+//                if (!checkInputStudentGroup(inputText)) {
+//                    return new SendMessage(chatId, "Неправильный формат ввода! Повторите попытку.");
+//                }
+//                return getLoginEnterPasswordMessage(chatId);
+//            }
             else if (userLoginStates.get(chatId).equals(LoginStateEnum.INPUT_ENTER_PASSWORD_STATE)) {
                 if (checkInputPassword(chatId, inputText)) {
                     return getLoginTruthPasswordMessage(chatId);
@@ -223,9 +254,27 @@ public class MessageHandler {
 
 
     public SendMessage getLoginStudentAuthorizationPassMessage(String chatId) {
-        userLoginStates.replace(chatId, LoginStateEnum.INPUT_STUDENT_PASSWORD_STATE);
+        userLoginStates.replace(chatId, LoginStateEnum.INPUT_KUBSU_STUDENT_PASSWORD_STATE);
 
-        SendMessage sendMessage = new SendMessage(chatId, BotMessageEnum.LOGIN_INPUT_KUBSU_STUDENT_PASS_MESSAGE.getMessage());
+        SendMessage sendMessage = new SendMessage(chatId, BotMessageEnum.LOGIN_INPUT_KUBSU_PASS_MESSAGE.getMessage());
+        sendMessage.enableMarkdown(true);
+        return sendMessage;
+    }
+
+
+    public SendMessage getLoginTeacherAuthorizationPassMessage(String chatId) {
+        userLoginStates.replace(chatId, LoginStateEnum.INPUT_KUBSU_TEACHER_PASSWORD_STATE);
+
+        SendMessage sendMessage = new SendMessage(chatId, BotMessageEnum.LOGIN_INPUT_KUBSU_PASS_MESSAGE.getMessage());
+        sendMessage.enableMarkdown(true);
+        return sendMessage;
+    }
+
+
+    public SendMessage getWrongLoginTeacherAuthorizationPassMessage(String chatId) {
+//        userLoginStates.replace(chatId, LoginStateEnum.INPUT_KUBSU_TEACHER_PASSWORD_STATE);
+
+        SendMessage sendMessage = new SendMessage(chatId, BotMessageEnum.LOGIN_WRONG_INPUT_KUBSU_LOGIN_MESSAGE.getMessage());
         sendMessage.enableMarkdown(true);
         return sendMessage;
     }
@@ -468,5 +517,41 @@ public class MessageHandler {
         }
 
         return studentData;
+    }
+
+    private String loginKubSUTeacher(String [] data) {
+        org.jsoup.nodes.Document doc = null;
+//        List<String> teacherData = new ArrayList<>();
+        String teacherData = null;
+        try {
+            Connection.Response response = Jsoup.connect("https://kubsu.ru/user/")
+                    .method(Connection.Method.GET)
+                    .execute();
+            response = Jsoup.connect("https://kubsu.ru/user/")
+                    .header("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 YaBrowser/23.1.4.778 Yowser/2.5 Safari/537.36")
+                    .data("name", data[0],
+                            "pass", data[1],
+                            "form_build_id", "form-6WaXgfgNZ-mR5iIyNjJ1cazdjmfi1aO9HjwkGxI3A0Y",
+                            "form_id", "user_login",
+                            "op", "Войти")
+                    .method(Connection.Method.POST)
+                    .timeout(10000).execute();
+
+
+            doc = Jsoup.connect("https://www.kubsu.ru/public-portfolio").cookies(response.cookies()).get();
+//            Element blockRega = doc.select("div.foot").first();
+            String [] fio = doc.select("head > title").text().split(Pattern.quote("|"));
+
+            if (fio[0].trim().equals("Гость")) throw new IllegalArgumentException("Неверный логин или пароль");
+
+            teacherData = fio[0].trim();
+//            teacherData.add(fio[0].trim());
+
+        } catch (IOException e) {
+
+            e.printStackTrace();
+        }
+
+        return teacherData;
     }
 }
